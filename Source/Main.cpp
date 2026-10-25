@@ -53,6 +53,25 @@ namespace
 	auto	window = HWND ( nullptr );
 	auto	taskbarCreated = UINT ( 0 );
 
+	// Dark context menus: undocumented uxtheme exports by ordinal, 0 default, 1 allow dark, 2 force dark, 3 force light
+	using SetPreferredAppMode = int ( WINAPI* ) ( int );
+	using FlushMenuThemes = void ( WINAPI* ) ();
+	auto	flushMenuThemes = FlushMenuThemes ( nullptr );
+
+	void allowDarkMenus ()
+	{
+		const auto	uxtheme = LoadLibraryExW ( L"uxtheme.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32 );
+		if ( uxtheme == nullptr )
+			return;
+
+		const auto	setPreferredAppMode = reinterpret_cast<SetPreferredAppMode> ( GetProcAddress ( uxtheme, MAKEINTRESOURCEA ( 135 ) ) );
+		flushMenuThemes = reinterpret_cast<FlushMenuThemes> ( GetProcAddress ( uxtheme, MAKEINTRESOURCEA ( 136 ) ) );
+		if ( setPreferredAppMode != nullptr )
+			setPreferredAppMode ( 1 );
+		if ( flushMenuThemes != nullptr )
+			flushMenuThemes ();
+	}
+
 	bool usesFrequency ( config::Mode mode )
 	{
 		return mode == config::Mode::fluctuate || mode == config::Mode::sine;
@@ -218,7 +237,11 @@ namespace
 		{
 			case WM_SETTINGCHANGE:
 				if ( lParam != 0 && text::equals ( reinterpret_cast<const wchar_t*> ( lParam ), L"ImmersiveColorSet" ) )
+				{
+					if ( flushMenuThemes != nullptr )
+						flushMenuThemes ();
 					showIcon ();
+				}
 				return 0;
 
 			case WM_DISPLAYCHANGE:
@@ -298,6 +321,7 @@ namespace
 
 		autostart::initialise ();
 		settings = config::load ();
+		allowDarkMenus ();
 		SetProcessDpiAwarenessContext ( DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 );
 		taskbarCreated = RegisterWindowMessageW ( L"TaskbarCreated" );
 

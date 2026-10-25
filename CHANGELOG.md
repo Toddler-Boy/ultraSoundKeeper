@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0 (2026-10-25)
+
+- The right-click menu follows the dark taskbar theme
+
 ## 1.0.0 (2026-10-24)
 
 First release. Started from Sound Keeper 1.3.6, rewritten from the ground up.
